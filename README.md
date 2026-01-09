@@ -1,4 +1,4 @@
-# 🚀 TNT SmartVehicle Intelligence Platform
+# 🚀 SmartVehicle Intelligence System
 ## Complete Safety & Enforcement System for ALL Vehicles (Buses 🚌 | Trucks 🚛 | Taxis 🚕 | Vans 🚐)
 
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://github.com/salarkhan2003/smartvehicle-intelligence-platform)
