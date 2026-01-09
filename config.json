@@ -1,0 +1,233 @@
+{
+  "system": {
+    "name": "Smart Vehicle Intelligence System",
+    "vehicle_id": "VEH001",
+    "vehicle_type": "auto",
+    "location": "Fleet Depot",
+    "installation_date": "2026-01-09",
+    "supported_vehicles": ["car", "truck", "bus", "motorcycle", "bicycle", "auto"]
+  },
+    "vehicle_specific_thresholds": {
+      "car": 1.5,
+      "truck": 2.0,
+      "bus": 2.0,
+      "motorcycle": 1.0,
+      "bicycle": 1.0,
+      "default": 1.5
+    },
+
+  "blind_spot": {
+    "enabled": true,
+    "threshold_meters": 1.5,
+    "critical_threshold_meters": 1.0,
+    "detection_classes": [
+      "person",
+      "pedestrian",
+      "bicycle",
+      "motorcycle",
+      "car",
+      "truck",
+      "bus",
+      "child",
+      "elderly",
+      "wheelchair",
+      "luggage",
+      "animal"
+    ]
+  },
+
+  "traffic_violation": {
+    "enabled": true,
+    "helmet_detection": {
+      "enabled": true,
+      "confidence_threshold": 0.6,
+      "model_path": "models/helmet_detector.pt"
+    },
+    "seatbelt_detection": {
+      "enabled": true,
+      "confidence_threshold": 0.7,
+      "shoulder_angle_threshold": 30,
+      "model_path": "models/seatbelt_detector.pt"
+    },
+    "speed_detection": {
+      "enabled": true,
+      "min_tracking_frames": 5,
+      "accuracy_kmh": 2
+    },
+    "lane_detection": {
+      "enabled": true,
+      "min_trajectory_frames": 30,
+      "angle_threshold": 45
+    },
+    "anpr": {
+      "enabled": true,
+      "ocr_engine": "easyocr",
+      "languages": ["en"],
+      "confidence_threshold": 0.8
+    }
+  },
+
+  "camera_calibration": {
+    "pixels_per_meter": 20,
+    "focal_length": 800,
+    "known_object_height_meters": 1.7,
+    "camera_positions": {
+      "front": {
+        "device_id": 0,
+        "resolution": [1280, 720],
+        "fps": 30,
+        "mount_height_meters": 2.5
+      },
+      "rear": {
+        "device_id": 1,
+        "resolution": [1280, 720],
+        "fps": 30,
+        "mount_height_meters": 2.5
+      },
+      "left": {
+        "device_id": 2,
+        "resolution": [1280, 720],
+        "fps": 30,
+        "mount_height_meters": 1.8
+      },
+      "right": {
+        "device_id": 3,
+        "resolution": [1280, 720],
+        "fps": 30,
+        "mount_height_meters": 1.8
+      }
+    }
+  },
+
+  "speed_limits": {
+    "school_zone": 30,
+    "bus_stop": 40,
+    "residential": 50,
+    "arterial": 60,
+    "expressway": 90
+  },
+
+  "geofences": [
+    {
+      "name": "Bedok Primary School",
+      "type": "school_zone",
+      "latitude": 1.3215,
+      "longitude": 103.9300,
+      "radius_meters": 100,
+      "threshold_meters": 1.0,
+      "speed_limit": 30
+    },
+    {
+      "name": "Bedok Bus Interchange",
+      "type": "bus_stop",
+      "latitude": 1.3240,
+      "longitude": 103.9307,
+      "radius_meters": 50,
+      "threshold_meters": 1.2,
+      "speed_limit": 40
+    }
+  ],
+
+  "alerts": {
+    "gpio": {
+      "enabled": true,
+      "buzzer_pin": 18,
+      "led_pin": 19,
+      "vibration_pin": 20,
+      "buzzer_frequency": 1000,
+      "led_flash_duration_ms": 100,
+      "cooldown_seconds": 3
+    },
+    "voice": {
+      "enabled": true,
+      "engine": "pyttsx3",
+      "volume": 0.9,
+      "rate": 150,
+      "templates": {
+        "blind_spot_critical": "DANGER! Blind spot detected on {direction} at {distance} meters!",
+        "blind_spot_high": "Warning! Object detected at {distance} meters on {direction} side.",
+        "no_helmet": "Traffic violation! Motorcyclist without helmet detected.",
+        "no_seatbelt": "Traffic violation! Driver without seatbelt detected.",
+        "over_speeding": "Speed violation! Vehicle exceeding {limit} km/h limit."
+      }
+    },
+    "dashboard": {
+      "websocket_enabled": true,
+      "update_rate_hz": 10
+    }
+  },
+
+  "video_buffer": {
+    "enabled": true,
+    "max_frames": 300,
+    "pre_event_seconds": 5,
+    "post_event_seconds": 5,
+    "save_directory": "violations/",
+    "codec": "H264",
+    "quality": 85
+  },
+
+  "database": {
+    "type": "postgresql",
+    "host": "localhost",
+    "port": 5432,
+    "database": "tnt_fleet_management",
+    "username": "postgres",
+    "password": "postgres",
+    "connection_pool_size": 5,
+    "log_retention_days": 180
+  },
+
+  "network": {
+    "lte_enabled": true,
+    "wifi_fallback": true,
+    "api_endpoint": "https://api.tntsurveillance.com",
+    "city_traffic_api": "https://traffic.gov.sg/api/violations",
+    "sync_interval_seconds": 300,
+    "offline_buffer_size": 1000
+  },
+
+  "performance": {
+    "inference_device": "cpu",
+    "max_cpu_percent": 80,
+    "max_memory_percent": 70,
+    "target_fps": 30,
+    "detection_confidence_threshold": 0.5,
+    "nms_iou_threshold": 0.45
+  },
+
+  "ai_features": {
+    "false_positive_reduction": {
+      "enabled": true,
+      "history_size": 100,
+      "adaptive_threshold": true
+    },
+    "fatigue_detection": {
+      "enabled": true,
+      "model_path": "models/fatigue_lstm.pth",
+      "prediction_window_seconds": 30,
+      "eye_closure_threshold": 2.0
+    },
+    "predictive_alerts": {
+      "enabled": true,
+      "turn_signal_preactivation_seconds": 3
+    }
+  },
+
+  "logging": {
+    "level": "INFO",
+    "file_path": "logs/tnt_detection.log",
+    "max_file_size_mb": 100,
+    "backup_count": 10,
+    "json_format": true
+  },
+
+  "maintenance": {
+    "auto_update_models": true,
+    "update_check_interval_days": 7,
+    "backup_enabled": true,
+    "backup_schedule": "daily",
+    "health_check_interval_seconds": 60
+  }
+}
+
