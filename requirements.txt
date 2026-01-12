@@ -1,0 +1,28 @@
+# Core GUI & Computer Vision (flexible versions for Python 3.8-3.14)
+PySide6>=6.6.1
+opencv-python>=4.9.0
+numpy>=1.26.0,<2.0.0
+pillow>=10.0.0
+
+# AI/ML Models
+ultralytics>=8.1.0
+mediapipe>=0.10.9
+easyocr>=1.7.0
+scikit-learn>=1.4.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Text-to-Speech & Audio
+pyttsx3>=2.90
+
+# Hardware Integration (Optional)
+pyserial>=3.5
+python-can>=4.3.0
+
+# Utilities
+geopy>=2.4.0
+shapely>=2.0.0
+scipy>=1.11.0
+
+# Object Tracking
+filterpy>=1.4.5

@@ -1,0 +1,36 @@
+{
+  "gemini_api_key": "YOUR_GEMINI_API_KEY_HERE",
+  "database_path": "smartvehicle.db",
+  "camera_index": 0,
+  "detection_thresholds": {
+    "bus": {
+      "blind_spot_distance": 1.5,
+      "fatigue_threshold": 0.7,
+      "speed_limit": 60
+    },
+    "truck": {
+      "blind_spot_distance": 2.0,
+      "fatigue_threshold": 0.65,
+      "speed_limit": 50
+    },
+    "taxi": {
+      "blind_spot_distance": 1.0,
+      "fatigue_threshold": 0.75,
+      "speed_limit": 80
+    },
+    "van": {
+      "blind_spot_distance": 1.2,
+      "fatigue_threshold": 0.7,
+      "speed_limit": 70
+    },
+    "school_bus": {
+      "blind_spot_distance": 1.8,
+      "fatigue_threshold": 0.8,
+      "speed_limit": 50
+    }
+  },
+  "api_rate_limit": 15,
+  "target_fps": 10,
+  "cache_duration": 2
+}
+

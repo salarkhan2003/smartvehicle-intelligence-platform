@@ -1,0 +1,120 @@
+{
+    "school_zones": [
+        {
+            "name": "Singapore Primary School 1",
+            "latitude": 1.3521,
+            "longitude": 103.8198,
+            "radius_meters": 200,
+            "speed_limit": 40,
+            "active_hours": "07:00-18:00",
+            "active_days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday"
+            ]
+        },
+        {
+            "name": "Raffles Institution",
+            "latitude": 1.3416,
+            "longitude": 103.8576,
+            "radius_meters": 250,
+            "speed_limit": 40,
+            "active_hours": "06:30-19:00",
+            "active_days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday"
+            ]
+        }
+    ],
+    "residential_zones": [
+        {
+            "name": "Hougang Residential Area",
+            "latitude": 1.3719,
+            "longitude": 103.8874,
+            "radius_meters": 500,
+            "speed_limit": 50,
+            "active_hours": "00:00-23:59",
+            "active_days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ]
+        }
+    ],
+    "highway_zones": [
+        {
+            "name": "PIE (Pan Island Expressway)",
+            "latitude": 1.3300,
+            "longitude": 103.9200,
+            "radius_meters": 1000,
+            "speed_limit": 90,
+            "active_hours": "00:00-23:59",
+            "active_days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ]
+        },
+        {
+            "name": "CTE (Central Expressway)",
+            "latitude": 1.3340,
+            "longitude": 103.8520,
+            "radius_meters": 1000,
+            "speed_limit": 90,
+            "active_hours": "00:00-23:59",
+            "active_days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ]
+        }
+    ],
+    "restricted_zones": [
+        {
+            "name": "Hospital Zone - SGH",
+            "latitude": 1.2764,
+            "longitude": 103.8355,
+            "radius_meters": 150,
+            "speed_limit": 30,
+            "active_hours": "00:00-23:59",
+            "active_days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "no_horn": true
+        }
+    ],
+    "enforcement_zones": [
+        {
+            "name": "Speed Camera Location 1",
+            "latitude": 1.3350,
+            "longitude": 103.8800,
+            "radius_meters": 100,
+            "enforce_speed": true,
+            "enforce_helmet": true,
+            "enforce_seatbelt": true
+        }
+    ]
+}
