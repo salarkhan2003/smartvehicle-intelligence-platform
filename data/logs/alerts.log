@@ -174,3 +174,30 @@
 {"timestamp": "2026-01-12T19:48:40.585412", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 2.0m", "severity": "high"}
 {"timestamp": "2026-01-12T19:48:46.944462", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 1.9m", "severity": "high"}
 {"timestamp": "2026-01-12T19:48:50.449438", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:14.138551", "type": "test_low", "message": "This is a low severity test alert", "severity": "low"}
+{"timestamp": "2026-01-12T19:55:16.143659", "type": "test_medium", "message": "This is a medium severity test alert", "severity": "medium"}
+{"timestamp": "2026-01-12T19:55:18.146837", "type": "test_high", "message": "This is a high severity test alert", "severity": "high"}
+{"timestamp": "2026-01-12T19:55:20.150553", "type": "test_critical", "message": "This is a critical severity test alert", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:28.239973", "type": "test_low", "message": "This is a low severity test alert", "severity": "low"}
+{"timestamp": "2026-01-12T19:55:30.244498", "type": "test_medium", "message": "This is a medium severity test alert", "severity": "medium"}
+{"timestamp": "2026-01-12T19:55:32.248335", "type": "test_high", "message": "This is a high severity test alert", "severity": "high"}
+{"timestamp": "2026-01-12T19:55:34.252369", "type": "test_critical", "message": "This is a critical severity test alert", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:36.291385", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:39.397210", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:42.550753", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:45.630983", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:48.751766", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:51.815673", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:54.983674", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:55:58.144745", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T19:56:01.363525", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T20:06:32.146714", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T20:06:35.331348", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T20:06:38.458179", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-12T20:06:41.791132", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.5m", "severity": "critical"}
+{"timestamp": "2026-01-19T11:04:39.089891", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.6m", "severity": "critical"}
+{"timestamp": "2026-01-19T11:04:43.399365", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.6m", "severity": "critical"}
+{"timestamp": "2026-01-19T11:04:47.800265", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.6m", "severity": "critical"}
+{"timestamp": "2026-01-19T11:04:52.086124", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.6m", "severity": "critical"}
+{"timestamp": "2026-01-19T11:04:56.340162", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.6m", "severity": "critical"}
+{"timestamp": "2026-01-19T11:05:00.687437", "type": "COLLISION_WARNING", "message": "Collision warning! Object at 0.6m", "severity": "critical"}

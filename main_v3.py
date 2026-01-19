@@ -208,6 +208,7 @@ class EnhancedCameraWorker(QThread):
         self.prev_gray = None
         self.frame_count = 0
         self.detection_id_counter = 0
+        self.last_collision_alert = 0  # Timestamp of last collision alert
         
         print("✓ All AI models initialized")
     
@@ -330,7 +331,7 @@ class EnhancedCameraWorker(QThread):
         # ==================== TIER 1: Object Detection ====================
         if self.yolo:
             try:
-                yolo_results = self.yolo(frame, verbose=False, conf=0.5)
+                yolo_results = self.yolo(frame, verbose=False, conf=0.6)  # Increased confidence threshold
                 vehicle_detections = []
                 
                 for r in yolo_results:
@@ -342,7 +343,36 @@ class EnhancedCameraWorker(QThread):
                         
                         # Distance estimation (TIER 1 Feature #4)
                         bbox_height = y2 - y1
-                        distance = max(0.5, 3.5 - (bbox_height / 80))
+                        bbox_width = x2 - x1
+                        
+                        # Improved distance calculation based on object type
+                        if cls_id == 0:  # person
+                            # Average person height ~1.7m, calibrated for 640x480
+                            distance = max(0.5, (1.7 * 480) / (bbox_height * 4.5))
+                        elif cls_id in [2, 3, 5, 7]:  # vehicles
+                            # Average vehicle height ~1.5m
+                            distance = max(0.5, (1.5 * 480) / (bbox_height * 4.0))
+                        elif cls_id in [15, 16]:  # cat, dog
+                            # Small animals ~0.5m height
+                            distance = max(0.3, (0.5 * 480) / (bbox_height * 3.0))
+                        elif cls_id in [17, 19]:  # horse, cow
+                            # Large animals ~1.6m height
+                            distance = max(0.5, (1.6 * 480) / (bbox_height * 4.2))
+                        elif cls_id in [18, 22]:  # sheep, zebra
+                            # Medium animals ~1.0m height
+                            distance = max(0.4, (1.0 * 480) / (bbox_height * 3.5))
+                        elif cls_id in [20, 21, 23]:  # elephant, bear, giraffe
+                            # Very large animals ~2.5m height
+                            distance = max(0.8, (2.5 * 480) / (bbox_height * 5.0))
+                        elif cls_id == 14:  # bird
+                            # Birds are small but dangerous for windshield
+                            distance = max(0.2, (0.3 * 480) / (bbox_height * 2.5))
+                        else:
+                            # Generic objects - use original formula but more conservative
+                            distance = max(1.0, 5.0 - (bbox_height / 60))
+                        
+                        # Cap maximum distance to reasonable value
+                        distance = min(distance, 15.0)
                         
                         # Threat level calculation (TIER 1 Feature #5)
                         if distance < 1.0:
@@ -509,61 +539,191 @@ class EnhancedCameraWorker(QThread):
         
         # ==================== TIER 4: Collision Warning ====================
         # Feature #27: Collision Warning with BEEP
-        if results['distance_min'] < 2.0:  # Object within 2 meters
-            ttc = results['distance_min'] / max(results['speed_kmh'] / 3.6, 0.1) if results['speed_kmh'] > 0 else 999
-            results['ttc'] = ttc
-            results['collision_warning'] = True
+        
+        # Filter for high-confidence, relevant objects only
+        collision_objects = []
+        for det in results['detections']:
+            # Only consider high-confidence detections
+            if det['confidence'] < 0.7:
+                continue
+                
+            # Objects that can cause collisions
+            collision_classes = [
+                # People & Vehicles
+                0, 1, 2, 3, 5, 7, 8,  # person, bicycle, car, motorcycle, bus, truck, boat
+                
+                # Animals - CRITICAL for road safety
+                14, 15, 16, 17, 18, 19, 20, 21, 22, 23,  # bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe
+            ]
             
-            # Create collision alert
-            results['alerts'].append({
-                'type': 'COLLISION_WARNING',
-                'severity': 'CRITICAL' if results['distance_min'] < 1.0 else 'HIGH',
-                'message': f"Collision warning! Object at {results['distance_min']:.1f}m"
-            })
+            if det['class_id'] not in collision_classes:
+                continue
+                
+            # Additional validation: object must be in lower half of frame (ground level)
+            # Exception: Birds can be anywhere (they can fly into windshield)
+            x1, y1, x2, y2 = det['bbox']
+            object_bottom = y2
+            frame_height = 480  # Our frame height
             
-            # BEEP SOUND - Immediate warning
-            try:
-                import winsound
-                # Quick beep - 3 times for critical
-                if results['distance_min'] < 1.0:
-                    threading.Thread(target=lambda: [winsound.Beep(1500, 150) or time.sleep(0.1) for _ in range(3)], daemon=True).start()
-                else:
-                    threading.Thread(target=lambda: winsound.Beep(1000, 300), daemon=True).start()
-            except: 
-                pass
+            # Birds can be anywhere, other objects must be ground-level
+            if det['class_id'] != 14:  # Not a bird
+                if object_bottom < frame_height * 0.4:
+                    continue
+                
+            collision_objects.append(det)
+        
+        # Calculate minimum distance from valid collision objects only
+        if collision_objects:
+            collision_distance_min = min(obj['distance'] for obj in collision_objects)
+            
+            # Debug info (remove in production)
+            if len(collision_objects) > 0:
+                print(f"Collision check: {len(collision_objects)} valid objects, min distance: {collision_distance_min:.1f}m")
+            
+            # Only trigger if we have a valid close object
+            if collision_distance_min < 2.0:  # Object within 2 meters
+                # Add cooldown to prevent spam (minimum 2 seconds between alerts)
+                current_time = time.time()
+                if current_time - self.last_collision_alert < 2.0:
+                    return results  # Skip this alert
+                
+                self.last_collision_alert = current_time
+                
+                ttc = collision_distance_min / max(results['speed_kmh'] / 3.6, 0.1) if results['speed_kmh'] > 0 else 999
+                results['ttc'] = ttc
+                results['collision_warning'] = True
+                
+                # Create collision alert with animal-specific messaging
+                collision_message = f"Collision warning! Object at {collision_distance_min:.1f}m"
+                
+                # Check if collision object is an animal
+                animal_in_collision = any(obj['class_id'] in [14, 15, 16, 17, 18, 19, 20, 21, 22, 23] 
+                                        for obj in collision_objects 
+                                        if obj['distance'] == collision_distance_min)
+                
+                if animal_in_collision:
+                    # Find the specific animal
+                    animal_obj = next(obj for obj in collision_objects 
+                                    if obj['distance'] == collision_distance_min and 
+                                    obj['class_id'] in [14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+                    collision_message = f"ANIMAL ALERT! {animal_obj['class_name']} at {collision_distance_min:.1f}m"
+                    
+                    # Log animal collision violation
+                    results['violations'].append({
+                        'type': 'Animal Collision Risk',
+                        'details': f"{animal_obj['class_name']} detected at {collision_distance_min:.1f}m - High collision risk",
+                        'severity': 'CRITICAL' if collision_distance_min < 1.0 else 'HIGH',
+                        'animal_type': animal_obj['class_name']
+                    })
+                
+                results['alerts'].append({
+                    'type': 'ANIMAL_COLLISION' if animal_in_collision else 'COLLISION_WARNING',
+                    'severity': 'CRITICAL' if collision_distance_min < 1.0 else 'HIGH',
+                    'message': collision_message
+                })
+                
+                # BEEP SOUND - Animal-specific warning patterns
+                try:
+                    import winsound
+                    
+                    if animal_in_collision:
+                        # Animal-specific beep patterns
+                        animal_obj = next(obj for obj in collision_objects 
+                                        if obj['distance'] == collision_distance_min and 
+                                        obj['class_id'] in [14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+                        
+                        if animal_obj['class_id'] in [20, 21, 23]:  # Large animals (elephant, bear, giraffe)
+                            # Deep, slow beeps for large animals
+                            threading.Thread(target=lambda: [winsound.Beep(800, 400) or time.sleep(0.2) for _ in range(2)], daemon=True).start()
+                        elif animal_obj['class_id'] == 14:  # Bird
+                            # High-pitched rapid beeps for birds
+                            threading.Thread(target=lambda: [winsound.Beep(2000, 100) or time.sleep(0.05) for _ in range(5)], daemon=True).start()
+                        elif animal_obj['class_id'] in [15, 16]:  # Small animals (cat, dog)
+                            # Medium beeps for small animals
+                            threading.Thread(target=lambda: [winsound.Beep(1200, 200) or time.sleep(0.1) for _ in range(3)], daemon=True).start()
+                        else:  # Other animals
+                            # Standard animal warning
+                            threading.Thread(target=lambda: [winsound.Beep(1000, 250) or time.sleep(0.15) for _ in range(3)], daemon=True).start()
+                    else:
+                        # Standard collision beeps for non-animals
+                        if collision_distance_min < 1.0:
+                            threading.Thread(target=lambda: [winsound.Beep(1500, 150) or time.sleep(0.1) for _ in range(3)], daemon=True).start()
+                        else:
+                            threading.Thread(target=lambda: winsound.Beep(1000, 300), daemon=True).start()
+                except: 
+                    pass
         
         return results
     
     def _get_class_name(self, cls_id):
-        """Get YOLO class name"""
+        """Get YOLO class name - Complete COCO dataset (80 classes)"""
         classes = {
+            # People & Vehicles
             0: 'PERSON', 1: 'BICYCLE', 2: 'CAR', 3: 'MOTORCYCLE',
             4: 'AIRPLANE', 5: 'BUS', 6: 'TRAIN', 7: 'TRUCK',
             8: 'BOAT', 9: 'TRAFFIC LIGHT', 10: 'FIRE HYDRANT',
-            11: 'STOP SIGN', 12: 'PARKING METER'
+            11: 'STOP SIGN', 12: 'PARKING METER', 13: 'BENCH',
+            
+            # Animals - TIER 1 Feature: Animal Detection
+            14: 'BIRD', 15: 'CAT', 16: 'DOG', 17: 'HORSE',
+            18: 'SHEEP', 19: 'COW', 20: 'ELEPHANT', 21: 'BEAR',
+            22: 'ZEBRA', 23: 'GIRAFFE',
+            
+            # Sports & Recreation
+            24: 'BACKPACK', 25: 'UMBRELLA', 26: 'HANDBAG', 27: 'TIE',
+            28: 'SUITCASE', 29: 'FRISBEE', 30: 'SKIS', 31: 'SNOWBOARD',
+            32: 'SPORTS BALL', 33: 'KITE', 34: 'BASEBALL BAT', 35: 'BASEBALL GLOVE',
+            36: 'SKATEBOARD', 37: 'SURFBOARD', 38: 'TENNIS RACKET',
+            
+            # Kitchen & Food
+            39: 'BOTTLE', 40: 'WINE GLASS', 41: 'CUP', 42: 'FORK',
+            43: 'KNIFE', 44: 'SPOON', 45: 'BOWL', 46: 'BANANA',
+            47: 'APPLE', 48: 'SANDWICH', 49: 'ORANGE', 50: 'BROCCOLI',
+            51: 'CARROT', 52: 'HOT DOG', 53: 'PIZZA', 54: 'DONUT',
+            55: 'CAKE',
+            
+            # Furniture & Electronics
+            56: 'CHAIR', 57: 'COUCH', 58: 'POTTED PLANT', 59: 'BED',
+            60: 'DINING TABLE', 61: 'TOILET', 62: 'TV', 63: 'LAPTOP',
+            64: 'MOUSE', 65: 'REMOTE', 66: 'KEYBOARD', 67: 'CELL PHONE',
+            68: 'MICROWAVE', 69: 'OVEN', 70: 'TOASTER', 71: 'SINK',
+            72: 'REFRIGERATOR', 73: 'BOOK', 74: 'CLOCK', 75: 'VASE',
+            76: 'SCISSORS', 77: 'TEDDY BEAR', 78: 'HAIR DRIER', 79: 'TOOTHBRUSH'
         }
         return classes.get(cls_id, f'CLASS_{cls_id}')
     
     def _draw_annotations(self, frame, results, performance, health):
         """Draw all visual annotations on frame"""
         
-        # Draw detections
+        # Draw detections with animal-specific colors
         for det in results['detections']:
             x1, y1, x2, y2 = det['bbox']
             
-            # Color based on threat
-            if det['threat'] > 70:
-                color = (0, 0, 255)  # Red
-            elif det['threat'] > 40:
-                color = (0, 165, 255)  # Orange
+            # Color based on object type and threat
+            if det['class_id'] in [14, 15, 16, 17, 18, 19, 20, 21, 22, 23]:  # Animals
+                if det['threat'] > 70:
+                    color = (0, 0, 255)  # Red for dangerous animals
+                elif det['threat'] > 40:
+                    color = (0, 100, 255)  # Orange for medium threat animals
+                else:
+                    color = (0, 255, 255)  # Yellow for animals
             else:
-                color = (0, 255, 0)  # Green
+                # Regular threat-based coloring for non-animals
+                if det['threat'] > 70:
+                    color = (0, 0, 255)  # Red
+                elif det['threat'] > 40:
+                    color = (0, 165, 255)  # Orange
+                else:
+                    color = (0, 255, 0)  # Green
             
             # Draw bounding box
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             
-            # Draw label
+            # Draw label with animal indicator
             label = f"{det['class_name']} {det['confidence']*100:.0f}%"
+            if det['class_id'] in [14, 15, 16, 17, 18, 19, 20, 21, 22, 23]:
+                label = f"🐾 {label}"  # Animal emoji
+            
             cv2.putText(frame, label, (x1, y1-10),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
             
@@ -573,10 +733,16 @@ class EnhancedCameraWorker(QThread):
         
         # Draw performance metrics (TIER 1 Feature #9)
         y_offset = 30
+        
+        # Count animals detected
+        animal_count = sum(1 for det in results['detections'] 
+                          if det['class_id'] in [14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+        
         metrics_text = [
             f"FPS: {performance['fps']:.1f}",
             f"Latency: {performance['latency_ms']:.1f}ms",
             f"Detections: {results['total_detections']}",
+            f"Animals: {animal_count}",
             f"Speed: {results['speed_kmh']:.1f} km/h"
         ]
         
@@ -592,10 +758,25 @@ class EnhancedCameraWorker(QThread):
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             y_offset += 30
         
-        # Draw alerts
+        # Draw alerts with animal-specific styling
         if results['alerts']:
-            cv2.rectangle(frame, (0, frame.shape[0]-60), (frame.shape[1], frame.shape[0]), (0, 0, 255), -1)
-            alert_text = " | ".join([a['type'] for a in results['alerts']])
+            # Check if any alert is animal-related
+            animal_alert = any('ANIMAL' in alert['type'] for alert in results['alerts'])
+            
+            # Use different colors for animal alerts
+            alert_color = (0, 100, 255) if animal_alert else (0, 0, 255)  # Orange for animals, red for others
+            
+            cv2.rectangle(frame, (0, frame.shape[0]-60), (frame.shape[1], frame.shape[0]), alert_color, -1)
+            
+            # Create alert text with animal emoji if needed
+            alert_texts = []
+            for alert in results['alerts']:
+                if 'ANIMAL' in alert['type']:
+                    alert_texts.append(f"🐾 {alert['type']}")
+                else:
+                    alert_texts.append(alert['type'])
+            
+            alert_text = " | ".join(alert_texts)
             cv2.putText(frame, f"⚠ {alert_text}", (10, frame.shape[0]-20),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         
@@ -710,30 +891,95 @@ class SmartVehicleApp_v3(QMainWindow):
         self.record_btn.clicked.connect(self._toggle_recording)
         btn_layout.addWidget(self.record_btn, 0, 1)
         
-        # TIER 1 Feature #8: Snapshot
+        # Camera Switcher UI
+        camera_layout = QHBoxLayout()
+        
+        # Label
+        camera_label = QLabel("📹 Camera:")
+        camera_label.setStyleSheet("color: #0ff; font-weight: bold;")
+        camera_layout.addWidget(camera_label)
+        
+        # Dropdown
+        self.camera_combo = QComboBox()
+        self.camera_combo.setStyleSheet('''
+            QComboBox {
+                background: #333;
+                color: #fff;
+                padding: 5px;
+                border: 1px solid #0ff;
+                border-radius: 3px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #0ff;
+            }
+        ''')
+        
+        # Populate with cameras
+        cameras = find_cameras()
+        for cam in cameras:
+            self.camera_combo.addItem(cam['name'], cam['index'])
+        
+        # Select current camera
+        current_idx = self.camera_combo.findData(self.camera_index)
+        if current_idx >= 0:
+            self.camera_combo.setCurrentIndex(current_idx)
+        
+        camera_layout.addWidget(self.camera_combo)
+        
+        # Switch button
+        self.switch_camera_btn = QPushButton("🔄 Switch")
+        self.switch_camera_btn.clicked.connect(self._switch_camera)
+        self.switch_camera_btn.setStyleSheet('''
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #07a, stop:1 #055);
+                padding: 5px 15px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #09c, stop:1 #067);
+            }
+        ''')
+        camera_layout.addWidget(self.switch_camera_btn)
+        
+        # Add camera switcher to button layout
+        btn_layout.addLayout(camera_layout, 1, 0, 1, 3)
+        
+        # Snapshot button
         self.snapshot_btn = QPushButton("📸 Snapshot")
         self.snapshot_btn.clicked.connect(self._capture_snapshot)
-        btn_layout.addWidget(self.snapshot_btn, 0, 2)
+        btn_layout.addWidget(self.snapshot_btn, 2, 0)
         
-        # Export functionality
+        # Export button
         self.export_btn = QPushButton("📊 Export Data")
         self.export_btn.clicked.connect(self._export_data)
-        btn_layout.addWidget(self.export_btn, 1, 0)
+        btn_layout.addWidget(self.export_btn, 2, 1)
         
-        # Stop camera
+        # Stop button
         self.stop_btn = QPushButton("⏹ Stop System")
         self.stop_btn.clicked.connect(self._stop_system)
-        self.stop_btn.setStyleSheet("QPushButton {background: #d00;}")
-        btn_layout.addWidget(self.stop_btn, 1, 1, 1, 2)
+        self.stop_btn.setStyleSheet('''
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #a00, stop:1 #600);
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #c00, stop:1 #800);
+            }
+        ''')
+        btn_layout.addWidget(self.stop_btn, 2, 2)
         
         left_panel.addLayout(btn_layout)
         
-        # === RIGHT PANEL: Comprehensive Telemetry ===
+        # === RIGHT PANEL: Tabs and Info ===
         right_panel = QVBoxLayout()
         
-        # Create tab widget for organized display
+        # Create tabs widget
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("QTabWidget::pane {border: 1px solid #444;} QTabBar::tab {background: #2a2a2a; color: #fff; padding: 8px;} QTabBar::tab:selected {background: #3a3a3a;}")
         
         # TAB 1: Real-time Monitoring
         monitor_tab = self._create_monitor_tab()
@@ -1185,6 +1431,34 @@ class SmartVehicleApp_v3(QMainWindow):
             self.worker.wait()
             self.add_log("⏹ System stopped")
             self.stop_btn.setEnabled(False)
+    
+    def _switch_camera(self):
+        """Switch to selected camera - Real-time camera switching"""
+        new_camera_index = self.camera_combo.currentData()
+        
+        if new_camera_index == self.camera_index:
+            self.add_log("⚠ Already using this camera")
+            return
+        
+        self.add_log(f"🔄 Switching to camera {new_camera_index}...")
+        
+        # Stop current worker thread
+        self.worker.running = False
+        self.worker.wait(1000)  # Wait max 1 second
+        
+        # Update camera index
+        self.camera_index = new_camera_index
+        
+        # Create and start new worker with new camera
+        self.worker = EnhancedCameraWorker(camera_index=self.camera_index, config=self.config)
+        self.worker.frame_ready.connect(self.update_frame)
+        self.worker.metrics_ready.connect(self.update_metrics)
+        self.worker.start()
+        
+        # Update UI
+        cam_name = self.camera_combo.currentText()
+        self.add_log(f"✓ Successfully switched to {cam_name}")
+        self.setWindowTitle(f"SmartVehicle Intelligence v3.0 Enterprise - {cam_name}")
     
     def closeEvent(self, event):
         """Handle window close"""
