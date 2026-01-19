@@ -738,11 +738,15 @@ class EnhancedCameraWorker(QThread):
         animal_count = sum(1 for det in results['detections'] 
                           if det['class_id'] in [14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
         
+        # Count license plates
+        plate_count = len(results['plates_detected'])
+        
         metrics_text = [
             f"FPS: {performance['fps']:.1f}",
             f"Latency: {performance['latency_ms']:.1f}ms",
             f"Detections: {results['total_detections']}",
             f"Animals: {animal_count}",
+            f"Plates: {plate_count}",
             f"Speed: {results['speed_kmh']:.1f} km/h"
         ]
         
@@ -757,6 +761,42 @@ class EnhancedCameraWorker(QThread):
             cv2.putText(frame, f"HELMET VIOLATIONS: {helmet_count}", (10, y_offset),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             y_offset += 30
+        
+        # Draw detected license plates (TIER 3 Feature #19 - ANPR with OCR)
+        if results['plates_detected']:
+            plate_count = len(results['plates_detected'])
+            cv2.putText(frame, f"LICENSE PLATES: {plate_count}", (10, y_offset),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            y_offset += 30
+            
+            # Draw individual license plates
+            for plate in results['plates_detected']:
+                if 'bbox' in plate:
+                    x1, y1, x2, y2 = plate['bbox']
+                    
+                    # Color based on validity and confidence
+                    if plate.get('valid_format', False) and plate.get('confidence', 0) > 0.8:
+                        color = (0, 255, 0)  # Green for high confidence valid plates
+                    elif plate.get('confidence', 0) > 0.6:
+                        color = (0, 255, 255)  # Yellow for medium confidence
+                    else:
+                        color = (0, 165, 255)  # Orange for low confidence
+                    
+                    # Draw bounding box
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                    
+                    # Draw plate text
+                    plate_text = plate.get('plate_number', 'UNKNOWN')
+                    confidence = plate.get('confidence', 0)
+                    
+                    label = f"📋 {plate_text}"
+                    cv2.putText(frame, label, (x1, y1-30),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                    
+                    # Draw confidence
+                    conf_label = f"Conf: {confidence:.2f}"
+                    cv2.putText(frame, conf_label, (x1, y1-10),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
         
         # Draw alerts with animal-specific styling
         if results['alerts']:

@@ -1,8 +1,32 @@
-opencv-python==4.8.1.78
-numpy==1.24.3
-PySide6==6.6.0
-ultralytics==8.0.196
-pyttsx3==2.90
-pillow==10.1.0
-mediapipe==0.10.5
-# easyocr==1.7.0  # Optional - ANPR functionality (has build issues)
+# SmartVehicle Intelligence System v3.0 - Dependencies
+
+# Core ML/AI Libraries
+ultralytics>=8.0.0          # YOLOv8 for object detection
+easyocr>=1.7.0              # OCR for license plate recognition
+mediapipe>=0.10.0           # Face mesh for driver monitoring
+opencv-python>=4.8.0        # Computer vision
+numpy>=1.24.0               # Numerical computing
+scipy>=1.10.0               # Scientific computing
+
+# GUI Framework
+PySide6>=6.5.0              # Qt6 for modern UI
+
+# System Monitoring
+psutil>=5.9.0               # System performance monitoring
+
+# Text-to-Speech (Optional)
+pyttsx3>=2.90               # Voice alerts
+
+# Data Processing
+pandas>=2.0.0               # Data analysis (optional)
+matplotlib>=3.7.0           # Plotting (optional)
+
+# Development Tools (Optional)
+pytest>=7.0.0               # Testing framework
+black>=23.0.0               # Code formatting
+flake8>=6.0.0               # Code linting
+
+# Additional Dependencies
+Pillow>=10.0.0              # Image processing
+requests>=2.31.0            # HTTP requests (for updates)
+python-dateutil>=2.8.0     # Date utilities
